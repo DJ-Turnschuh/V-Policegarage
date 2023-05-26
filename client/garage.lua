@@ -4,13 +4,21 @@ local claimed = false
 local plateNumber = 0000
 local spawnedVehicles = {}
 local ReadyToClaim = false
-local isPolice = false
+local isJob = false
 
-function isPlayerJobPolice()
-    ESX.TriggerServerCallback("isPolice", function(cb)
-        isPolice = cb
-    end) 
-    return isPolice
+function isPlayerJob(job)
+    if job == nil then
+        return true
+    end
+    local jobP = job
+    ESX.TriggerServerCallback("isJob", function(cb)
+        isJob = cb
+    end)
+    if isJob == jobP then
+        return true
+    else
+        return false
+    end
 end
 
 function vehiclespawn()
@@ -27,16 +35,22 @@ function vehiclespawn()
                     Citizen.Wait(100)
                 end
                 local vehicle = CreateVehicle(GetHashKey(v.model),v.coords.x, v.coords.y, v.coords.z, v.coords.w,true,false)
-                if Config.PlateMax3 then 
-                    plateNumber = math.random(100,999)
+                SetVehicleOnGroundProperly(vehicle)
+                if v.livery ~= nil then
+                    ESX.Game.SetVehicleProperties(vehicle, {
+                        plate = v.plate,
+                        modLivery = v.livery
+                    })
                 else
-                    plateNumber = math.random(1000,9999)
+                    ESX.Game.SetVehicleProperties(vehicle, {
+                        plate = v.plate
+                    })
+                end           
+                if v.color ~= nil then
+                    SetVehicleCustomPrimaryColour(vehicle, v.color.r, v.color.g, v.color.b)
                 end
-                ESX.Game.SetVehicleProperties(vehicle, {
-                    plate = tostring(Config.Plate .. " " .. plateNumber)
-                })
                 FreezeEntityPosition(vehicle, true)
-                table.insert(spawnedVehicles, {id = k, veh = vehicle, coords = vec3(v.coords.x, v.coords.y, v.coords.z)})
+                table.insert(spawnedVehicles, {id = k, veh = vehicle, coords = vec3(v.coords.x, v.coords.y, v.coords.z), job = v.job})
                 SetModelAsNoLongerNeeded(v.model)
             else
                 if Config.Debug then 
@@ -50,7 +64,7 @@ end
 function vehicleclaim()
     local player = GetPlayerPed(-1)
     for k, vehicle in ipairs(spawnedVehicles) do
-        while IsPedInVehicle(player, vehicle.veh, true) do
+        while IsPedInVehicle(player, vehicle.veh, true) and isPlayerJob(vehicle.job) do
             Citizen.Wait(0)
             if claimed then
                 local distance = GetDistanceBetweenCoords(GetEntityCoords(player), vehicle.coords, false)
@@ -88,11 +102,7 @@ Citizen.CreateThread(function()
     while true do 
         Citizen.Wait(1000)
         if IsPedGettingIntoAVehicle(GetPlayerPed(-1)) then
-            if isPlayerJobPolice() then 
-                ReadyToClaim = true
-            else
-                ReadyToClaim = false
-            end
+            ReadyToClaim = true
         else
             ReadyToClaim = false
         end 
