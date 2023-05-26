@@ -1,9 +1,8 @@
 ESX = exports['es_extended']:getSharedObject()
 
-ESX.RegisterServerCallback('isPolice', function(src, cb)
-    if ESX.GetPlayerFromId(src).job.name == Config.Policejob then
-        cb(true)
-    else
-        cb(false)
+ESX.RegisterServerCallback('isJob', function(src, cb)
+    local job = ESX.GetPlayerFromId(src).job.name
+    if job ~= nil then
+        cb(job)
     end
 end)
